@@ -136,6 +136,8 @@ class _RequestContext:
         self._kwargs = kwargs
         self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
         self._raise_for_status = raise_for_status
+        self.proxy_list = None
+        self.user_agents_list = None
 
         self._current_attempt = 0
         self._response: Optional[ClientResponse] = None
@@ -145,6 +147,16 @@ class _RequestContext:
 
     async def _do_request(self) -> ClientResponse:
         try:
+            if 'proxy_list' in self._kwargs:
+                self.proxy_list = self._kwargs['proxy_list']
+                self._kwargs.pop('proxy_list', None)
+            if 'user_agents_list' in self._kwargs:
+                self.user_agents_list = self._kwargs['user_agents_list']
+                self._kwargs.pop('user_agents_list', None)
+            if self.proxy_list:
+                self._kwargs['proxy'] = random.choice(self.proxy_list)
+            if self.user_agents_list and 'User-Agent' in self._kwargs.get('headers', {}):
+                self._kwargs['headers']['User-Agent'] = random.choice(self.user_agents_list)
             self._current_attempt += 1
             self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
 
